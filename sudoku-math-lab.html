@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Sudoku Math Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EEF3F7;
+    --paper-line:#D9E3EC;
+    --ink:#1E293B;
+    --ink-soft:#5A6B7D;
+    --amber:#D9970C;
+    --teal:#2A9D8F;
+    --coral:#E4572E;
+    --card:#FFFFFF;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      linear-gradient(var(--paper-line) 1px, transparent 1px) 0 0/28px 28px,
+      linear-gradient(90deg, var(--paper-line) 1px, transparent 1px) 0 0/28px 28px,
+      var(--paper);
+    font-family:'Inter', sans-serif;
+    color:var(--ink);
+    padding:24px 16px 48px;
+  }
+  .wrap{max-width:640px; margin:0 auto;}
+  header{text-align:center; margin-bottom:22px;}
+  header .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--teal);
+    font-weight:700;
+  }
+  header h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:clamp(24px,5vw,32px);
+    margin:6px 0 8px;
+  }
+  header p{
+    color:var(--ink-soft);
+    font-size:15px;
+    max-width:480px;
+    margin:0 auto;
+    line-height:1.5;
+  }
+  .tabs{
+    display:flex;
+    gap:8px;
+    justify-content:center;
+    margin:22px 0 18px;
+    flex-wrap:wrap;
+  }
+  .tab-btn{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:14px;
+    padding:10px 18px;
+    border-radius:999px;
+    border:2px solid var(--ink);
+    background:var(--card);
+    color:var(--ink);
+    cursor:pointer;
+    transition:transform .15s ease, background .15s ease, color .15s ease;
+  }
+  .tab-btn:hover{transform:translateY(-1px);}
+  .tab-btn.active{background:var(--ink); color:#fff;}
+  .panel{display:none;}
+  .panel.active{display:block; animation:fadeIn .35s ease;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .card{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:22px;
+    box-shadow:0 1px 2px rgba(30,41,59,0.06), 0 8px 24px rgba(30,41,59,0.06);
+    border:1px solid var(--paper-line);
+  }
+  .card h2{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:18px;
+    margin:0 0 6px;
+  }
+  .card .desc{
+    color:var(--ink-soft);
+    font-size:14px;
+    line-height:1.55;
+    margin:0 0 18px;
+  }
+  /* Sudoku grid */
+  .grid6{
+    display:grid;
+    grid-template-columns:repeat(6, 1fr);
+    gap:3px;
+    max-width:340px;
+    margin:0 auto 16px;
+    background:var(--ink);
+    padding:3px;
+    border-radius:8px;
+  }
+  .cell{
+    aspect-ratio:1/1;
+    background:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    font-size:clamp(16px,4vw,20px);
+    cursor:pointer;
+    user-select:none;
+    position:relative;
+    transition:background .15s ease, transform .1s ease;
+  }
+  .cell.given{color:var(--ink); background:#F1F5F9; cursor:default;}
+  .cell.selected{background:#FFF3D9; box-shadow:inset 0 0 0 2px var(--amber);}
+  .cell.conflict{background:#FDE8E2; color:var(--coral);}
+  .cell.userfilled{color:var(--teal);}
+  /* thicker box borders for 2x3 boxes */
+  .cell:nth-child(3n){border-right:2px solid var(--ink);}
+  .cell:nth-child(6n){border-right:none;}
+  .grid6 .cell{border-right:1px solid #E2E8F0;}
+  .grid6 .cell:nth-child(3n){border-right:3px solid var(--ink);}
+  .grid6 .cell:nth-child(6n){border-right:none;}
+  .row-thick{border-bottom:3px solid var(--ink) !important;}
+  .numpad{
+    display:flex;
+    gap:8px;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+  .numpad button{
+    width:40px; height:40px;
+    border-radius:8px;
+    border:1.5px solid var(--ink);
+    background:#fff;
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    font-size:16px;
+    cursor:pointer;
+  }
+  .numpad button:hover{background:var(--teal); color:#fff; border-color:var(--teal);}
+  .numpad button.erase{width:auto; padding:0 14px; font-family:'Inter'; font-weight:600; font-size:13px;}
+  .status{
+    text-align:center;
+    font-size:14px;
+    font-weight:600;
+    min-height:20px;
+    margin-bottom:8px;
+  }
+  .status.ok{color:var(--teal);}
+  .status.bad{color:var(--coral);}
+  .btn-row{display:flex; justify-content:center; gap:10px; flex-wrap:wrap;}
+  .ghost-btn{
+    font-family:'Inter'; font-weight:600; font-size:13px;
+    padding:8px 14px; border-radius:8px;
+    border:1.5px solid var(--paper-line);
+    background:#fff; color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .ghost-btn:hover{border-color:var(--ink); color:var(--ink);}
+
+  /* Symmetry playground */
+  .grid4{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:3px;
+    max-width:220px;
+    margin:0 auto 18px;
+    background:var(--ink);
+    padding:3px;
+    border-radius:8px;
+  }
+  .grid4 .cell{cursor:default;}
+  .grid4 .cell:nth-child(2n){border-right:2px solid var(--ink);}
+  .grid4 .cell:nth-child(4n){border-right:none;}
+  .sym-controls{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .sym-btn{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:13px;
+    padding:12px 8px;
+    border-radius:10px;
+    border:2px solid var(--ink);
+    background:#fff;
+    cursor:pointer;
+    text-align:center;
+    transition:background .15s ease, color .15s ease;
+  }
+  .sym-btn:hover{background:var(--teal); border-color:var(--teal); color:#fff;}
+  .counter{
+    text-align:center;
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    color:var(--ink-soft);
+    margin-bottom:10px;
+  }
+  .counter b{color:var(--amber); font-size:16px;}
+  .explain{
+    background:#F1F5F9;
+    border-left:3px solid var(--teal);
+    padding:12px 14px;
+    border-radius:0 8px 8px 0;
+    font-size:13.5px;
+    color:var(--ink);
+    line-height:1.5;
+    min-height:44px;
+  }
+  footer{
+    text-align:center;
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-top:26px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">earnmath.com &middot; interactive lab</div>
+    <h1>The Sudoku Math Lab</h1>
+    <p>Sudoku looks like a number puzzle, but underneath it is pure mathematics: constraints, symmetry, and counting on a scale that is hard to imagine. Try both labs below.</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="fill">Fill It In</button>
+    <button class="tab-btn" data-tab="symmetry">Symmetry Playground</button>
+  </div>
+
+  <!-- PANEL 1: FILL IT IN -->
+  <div class="panel active" id="panel-fill">
+    <div class="card">
+      <h2>A 6&times;6 warm up grid</h2>
+      <p class="desc">Every row, every column, and every 2&times;3 box must contain the numbers 1 through 6 exactly once. Tap an empty cell, then tap a number. Watch what happens when a number repeats where it should not.</p>
+      <div id="grid6" class="grid6"></div>
+      <div class="numpad" id="numpad"></div>
+      <div class="status" id="status6">Select a cell to begin.</div>
+      <div class="btn-row">
+        <button class="ghost-btn" id="resetFill">Reset grid</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL 2: SYMMETRY PLAYGROUND -->
+  <div class="panel" id="panel-symmetry">
+    <div class="card">
+      <h2>One grid, endless twins</h2>
+      <p class="desc">Start with one valid, completed grid. Each button below applies a transformation that mathematicians call a "validity preserving symmetry." No matter how many times you press, the result is still a perfectly valid Sudoku.</p>
+      <div id="grid4" class="grid4"></div>
+      <div class="sym-controls">
+        <button class="sym-btn" data-op="rotate">Rotate 90&deg;</button>
+        <button class="sym-btn" data-op="reflect">Mirror Flip</button>
+        <button class="sym-btn" data-op="swapDigits">Swap Digits 1&harr;4</button>
+        <button class="sym-btn" data-op="swapRows">Swap a Row Pair</button>
+      </div>
+      <div class="counter">Transformations applied: <b id="symCount">0</b></div>
+      <div class="explain" id="symExplain">This is the grid we are starting from. It is one valid solution among 6,670,903,752,021,072,936,960 possible completed 9&times;9 grids.</div>
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="ghost-btn" id="resetSym">Reset to original</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>Built for earnmath.com</footer>
+</div>
+
+<script>
+/* ---------- PANEL 1: FILL IT IN (6x6) ---------- */
+const solution6 = [
+  [1,2,3,4,5,6],
+  [4,5,6,1,2,3],
+  [2,3,1,5,6,4],
+  [5,6,4,2,3,1],
+  [3,1,2,6,4,5],
+  [6,4,5,3,1,2]
+];
+// 0 = blank
+const puzzle6 = [
+  [1,2,0,4,5,6],
+  [4,0,6,1,2,3],
+  [0,3,1,5,6,4],
+  [5,6,4,0,3,1],
+  [3,1,0,6,4,5],
+  [6,4,5,3,1,0]
+];
+let state6 = puzzle6.map(row => row.slice());
+let selected = null;
+
+const grid6El = document.getElementById('grid6');
+const statusEl = document.getElementById('status6');
+
+function boxOf(r,c){ return Math.floor(r/2)*3 + Math.floor(c/3); }
+
+function findConflicts(){
+  const conflicts = new Set();
+  for(let r=0;r<6;r++){
+    for(let c=0;c<6;c++){
+      const v = state6[r][c];
+      if(v===0) continue;
+      for(let cc=0;cc<6;cc++){
+        if(cc!==c && state6[r][cc]===v) conflicts.add(r+','+c);
+      }
+      for(let rr=0;rr<6;rr++){
+        if(rr!==r && state6[rr][c]===v) conflicts.add(r+','+c);
+      }
+      for(let rr=0;rr<6;rr++){
+        for(let cc=0;cc<6;cc++){
+          if((rr!==r||cc!==c) && boxOf(rr,cc)===boxOf(r,c) && state6[rr][cc]===v) conflicts.add(r+','+c);
+        }
+      }
+    }
+  }
+  return conflicts;
+}
+
+function renderGrid6(){
+  grid6El.innerHTML = '';
+  const conflicts = findConflicts();
+  for(let r=0;r<6;r++){
+    for(let c=0;c<6;c++){
+      const div = document.createElement('div');
+      div.className = 'cell';
+      if(r===1||r===3) div.classList.add('row-thick');
+      if(puzzle6[r][c]!==0){
+        div.classList.add('given');
+      } else if(state6[r][c]!==0){
+        div.classList.add('userfilled');
+      }
+      if(conflicts.has(r+','+c)) div.classList.add('conflict');
+      if(selected && selected[0]===r && selected[1]===c) div.classList.add('selected');
+      div.textContent = state6[r][c]===0 ? '' : state6[r][c];
+      div.addEventListener('click', ()=>{
+        if(puzzle6[r][c]!==0) return;
+        selected = [r,c];
+        renderGrid6();
+      });
+      grid6El.appendChild(div);
+    }
+  }
+  updateStatus(conflicts);
+}
+
+function updateStatus(conflicts){
+  const full = state6.every(row => row.every(v => v!==0));
+  if(conflicts.size>0){
+    statusEl.textContent = 'That number already appears in this row, column, or box.';
+    statusEl.className = 'status bad';
+  } else if(full){
+    statusEl.textContent = 'Solved! Every row, column, and box holds 1 through 6 exactly once.';
+    statusEl.className = 'status ok';
+  } else {
+    statusEl.textContent = selected ? 'Pick a number for the highlighted cell.' : 'Select a cell to begin.';
+    statusEl.className = 'status';
+  }
+}
+
+const numpadEl = document.getElementById('numpad');
+for(let n=1;n<=6;n++){
+  const btn = document.createElement('button');
+  btn.textContent = n;
+  btn.addEventListener('click', ()=>{
+    if(!selected) return;
+    const [r,c] = selected;
+    if(puzzle6[r][c]!==0) return;
+    state6[r][c] = n;
+    renderGrid6();
+  });
+  numpadEl.appendChild(btn);
+}
+const eraseBtn = document.createElement('button');
+eraseBtn.textContent = 'Erase';
+eraseBtn.className = 'erase';
+eraseBtn.addEventListener('click', ()=>{
+  if(!selected) return;
+  const [r,c] = selected;
+  if(puzzle6[r][c]!==0) return;
+  state6[r][c] = 0;
+  renderGrid6();
+});
+numpadEl.appendChild(eraseBtn);
+
+document.getElementById('resetFill').addEventListener('click', ()=>{
+  state6 = puzzle6.map(row => row.slice());
+  selected = null;
+  renderGrid6();
+});
+
+renderGrid6();
+
+/* ---------- PANEL 2: SYMMETRY PLAYGROUND (4x4) ---------- */
+const original4 = [
+  [1,2,3,4],
+  [3,4,1,2],
+  [2,3,4,1],
+  [4,1,2,3]
+];
+let state4 = original4.map(row => row.slice());
+let symCount = 0;
+
+const grid4El = document.getElementById('grid4');
+const symCountEl = document.getElementById('symCount');
+const symExplainEl = document.getElementById('symExplain');
+
+function renderGrid4(){
+  grid4El.innerHTML = '';
+  for(let r=0;r<4;r++){
+    for(let c=0;c<4;c++){
+      const div = document.createElement('div');
+      div.className = 'cell';
+      if(r===1) div.classList.add('row-thick');
+      div.textContent = state4[r][c];
+      grid4El.appendChild(div);
+    }
+  }
+}
+
+function rotate(m){
+  const n = m.length;
+  const res = Array.from({length:n}, ()=>Array(n).fill(0));
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++) res[c][n-1-r] = m[r][c];
+  return res;
+}
+function reflect(m){
+  return m.map(row => row.slice().reverse());
+}
+function swapDigits(m,a,b){
+  return m.map(row => row.map(v => v===a?b: v===b?a: v));
+}
+function swapRowPair(m){
+  // randomly pick a band (rows 0-1 or rows 2-3) and swap the two rows in it
+  const bandStart = Math.random() < 0.5 ? 0 : 2;
+  const res = m.map(row => row.slice());
+  [res[bandStart], res[bandStart+1]] = [res[bandStart+1], res[bandStart]];
+  return res;
+}
+
+const explanations = {
+  rotate: 'Rotating the whole grid 90 degrees just relabels which direction is "row" and which is "column." Every row, column, and box still holds 1 to 4 exactly once.',
+  reflect: 'Flipping the grid like a mirror reverses the order of columns. Each row still contains every digit once, so the puzzle stays valid.',
+  swapDigits: 'Swapping every 1 with every 4 is called relabeling. The pattern of the grid does not change at all, only the names of the digits do.',
+  swapRows: 'Rows can be swapped with any other row in the same band (the same stack of boxes) without breaking a single rule, because that swap never mixes digits across a box boundary in a way that creates a repeat.'
+};
+
+document.querySelectorAll('.sym-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const op = btn.dataset.op;
+    if(op==='rotate') state4 = rotate(state4);
+    if(op==='reflect') state4 = reflect(state4);
+    if(op==='swapDigits') state4 = swapDigits(state4,1,4);
+    if(op==='swapRows') state4 = swapRowPair(state4);
+    symCount++;
+    symCountEl.textContent = symCount;
+    symExplainEl.textContent = explanations[op];
+    renderGrid4();
+  });
+});
+
+document.getElementById('resetSym').addEventListener('click', ()=>{
+  state4 = original4.map(row => row.slice());
+  symCount = 0;
+  symCountEl.textContent = 0;
+  symExplainEl.textContent = 'Back to the starting grid. Try a few transformations again and notice none of them ever break a rule.';
+  renderGrid4();
+});
+
+renderGrid4();
+
+/* ---------- TABS ---------- */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
